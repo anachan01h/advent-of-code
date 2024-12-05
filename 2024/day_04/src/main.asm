@@ -11,6 +11,7 @@ section .bss
     buffer_ptr resq 1
     buffer_size resq 1
     matrix resb 140 * 140
+    end resb 1
     string resb 141
 
 section .text
@@ -19,6 +20,8 @@ global main
 main:
     ; # Stack frame
     ; [rbp - 8]: &FILE
+    ; [rbp - 12]: u32
+    ; [rbp - 16]: u32
     push rbp
     mov rbp, rsp
     sub rsp, 16
@@ -168,6 +171,28 @@ main:
     cmp ebx, 140
     jl .diagonal2
 
+    mov [rbp - 12], dword 1     ; line
+.loop_x:
+    mov [rbp - 16], dword 1     ; column
+.loop_y:
+    mov eax, 140
+    mul dword [rbp - 12]
+    mov ecx, [rbp - 16]
+    lea rdi, [matrix + eax + ecx]
+    cmp [rdi], byte 'A'
+    jne .next
+    call is_x_mas
+    add r13d, eax
+
+.next:
+    inc dword [rbp - 16]
+    cmp [rbp - 16], dword 139
+    jb .loop_y
+
+    inc dword [rbp - 12]
+    cmp [rbp - 12], dword 139
+    jb .loop_x
+
 .end:
     mov rdi, [buffer_ptr]
     call free                   ; free memory from getline
@@ -236,4 +261,51 @@ strclr:
     cmp ecx, esi
     jb .loop
 
+    ret
+
+; is_x_mas(pos: &char) -> bool
+is_x_mas:
+    push rbp
+    mov rbp, rsp
+    sub rsp, 16
+    mov [rbp - 4], dword "MAS"
+    mov [rbp - 8], dword "SAM"
+    xor eax, eax
+
+    mov edx, "A"
+    shl edx, 8
+    mov ecx, edx
+
+    xor esi, esi
+    mov sil, [rdi - 141]
+    or edx, esi
+    mov sil, [rdi + 141]
+    shl esi, 16
+    or edx, esi
+
+    cmp edx, [rbp - 4]
+    je .next1
+    cmp edx, [rbp - 8]
+    jne .end
+.next1:
+    mov al, 1
+
+    xor esi, esi
+    mov sil, [rdi - 139]
+    or ecx, esi
+    mov sil, [rdi + 139]
+    shl esi, 16
+    or ecx, esi
+
+    cmp ecx, [rbp - 4]
+    je .next2
+    cmp ecx, [rbp - 8]
+    jne .end
+.next2:
+    mov ah, 1
+
+.end:
+    and al, ah
+    xor ah, ah
+    leave
     ret
