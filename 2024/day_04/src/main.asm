@@ -28,55 +28,54 @@ main:
 
     mov rdi, input
     mov rsi, mode
-    call fopen
-    mov [rbp - 8], rax
+    call fopen                  ; open input file
+    mov [rbp - 8], rax          ; save file stream
 
     xor ebx, ebx
 .next_line:
     mov rdi, buffer_ptr
     mov rsi, buffer_size
     mov rdx, [rbp - 8]
-    call getline
+    call getline                ; get next line
 
     cmp rax, -1
-    je .no_lines
+    je .no_lines                ; end loop if there is no line left
 
     mov eax, 140
     mul ebx
     lea rdi, [matrix + eax]
     mov rsi, [buffer_ptr]
     mov edx, 140
-    call strncpy
+    call strncpy                ; copy line to matrix
 
     inc ebx
     jmp .next_line
 
 .no_lines:
 
-    xor r12d, r12d
-    xor r13d, r13d
+    xor r12d, r12d              ; initialize first counter
+    xor r13d, r13d              ; initialize second counter
     xor ebx, ebx
 .horizontal:
     mov eax, 140
     mul ebx
     lea rdi, [matrix + eax]
     mov esi, 140
-    call count_xmas
-
-    add r12d, eax
+    call count_xmas             ; count xmas horizontally
+    add r12d, eax               ; add to counter
 
     inc ebx
     cmp ebx, 140
     jb .horizontal
 
-    xor ebx, ebx                ; column
+    xor ebx, ebx                ; initialize column
 .vertical:
-    xor ecx, ecx                ; line
+    xor ecx, ecx                ; initialize line
 .vertical_string:
     mov eax, 140
     mul ecx
     mov al, [matrix + eax + ebx]
-    mov [string + ecx], al
+    mov [string + ecx], al      ; copy vertical line to string
 
     inc ecx
     cmp ecx, 140
@@ -84,34 +83,35 @@ main:
 
     mov rdi, string
     mov esi, 140
-    call count_xmas
-    add r12d, eax
+    call count_xmas             ; count xmas vertically
+    add r12d, eax               ; add to counter
 
     inc ebx
     cmp ebx, 140
     jb .vertical
 
-    mov ebx, -139
+    mov ebx, -139               ; initialize diagonal counter
 .diagonal1:
     mov rdi, string
     mov esi, 140
-    call strclr
+    call strclr                 ; clear string
+
     xor edi, edi                ; initial line
     xor esi, esi                ; initial column
     xor ecx, ecx
 
     cmp ebx, 0
     jl .init_column1
-    add edi, ebx
+    add edi, ebx                ; if ebx is non-negative, it's the start line
     jmp .diagonal1_string
 .init_column1:
-    sub esi, ebx
+    sub esi, ebx                ; if ebx is negative, the initial column is 0 - ebx
 
 .diagonal1_string:
     mov eax, 140
     mul edi
     mov al, [matrix + eax + esi]
-    mov [string + ecx], al
+    mov [string + ecx], al      ; copy diagonal line to string
 
     inc edi
     inc esi
@@ -124,34 +124,35 @@ main:
 .diagonal1_next:
     mov rdi, string
     mov esi, 140
-    call count_xmas
-    add r12d, eax
+    call count_xmas             ; count xmas diagonally (up left to down right)
+    add r12d, eax               ; add to counter
 
     inc ebx
     cmp ebx, 140
     jl .diagonal1
 
-    mov ebx, -139
+    mov ebx, -139               ; initialize diagonal counter
 .diagonal2:
     mov rdi, string
     mov esi, 140
-    call strclr
+    call strclr                 ; clear string
+
     xor edi, edi                ; initial line
     mov esi, 139                ; initial column
     xor ecx, ecx
 
     cmp ebx, 0
     jl .init_column2
-    add edi, ebx
+    add edi, ebx                ; if ebx is non-negative, it's the initial line
     jmp .diagonal2_string
 .init_column2:
-    add esi, ebx
+    add esi, ebx                ; if ebx is negative, the initial column is 139 + ebx
 
 .diagonal2_string:
     mov eax, 140
     mul edi
     mov al, [matrix + eax + esi]
-    mov [string + ecx], al
+    mov [string + ecx], al      ; copy diagonal line to string
 
     inc edi
     dec esi
@@ -164,25 +165,25 @@ main:
 .diagonal2_next:
     mov rdi, string
     mov esi, 140
-    call count_xmas
-    add r12d, eax
+    call count_xmas             ; count xmas diagonally (up right to down left)
+    add r12d, eax               ; add to counter
 
     inc ebx
     cmp ebx, 140
     jl .diagonal2
 
-    mov [rbp - 12], dword 1     ; line
+    mov [rbp - 12], dword 1     ; initial line (ignore first and last)
 .loop_x:
-    mov [rbp - 16], dword 1     ; column
+    mov [rbp - 16], dword 1     ; initial column (ignore first and last)
 .loop_y:
     mov eax, 140
     mul dword [rbp - 12]
     mov ecx, [rbp - 16]
     lea rdi, [matrix + eax + ecx]
-    cmp [rdi], byte 'A'
+    cmp [rdi], byte 'A'         ; if 'A' was found...
     jne .next
-    call is_x_mas
-    add r13d, eax
+    call is_x_mas               ; ... then check for x-mas...
+    add r13d, eax               ; ... and add to counter!
 
 .next:
     inc dword [rbp - 16]
@@ -193,7 +194,6 @@ main:
     cmp [rbp - 12], dword 139
     jb .loop_x
 
-.end:
     mov rdi, [buffer_ptr]
     call free                   ; free memory from getline
 
@@ -226,23 +226,23 @@ count_xmas:
     mov [rbp - 4], dword "XMAS"
     mov [rbp - 8], dword "SAMX"
 
-    xor eax, eax
-    xor edx, edx
-    xor ecx, ecx
+    xor eax, eax                ; initialize xmas counter
+    xor edx, edx                ; initialize block
+    xor ecx, ecx                ; initialize position
 .loop:
-    shr edx, 8
+    shr edx, 8                  ; remove one letter
     mov r8b, [rdi + rcx]
     shl r8d, 24
-    or edx, r8d
+    or edx, r8d                 ; add next letter
 
-    cmp edx, [rbp - 4]
+    cmp edx, [rbp - 4]          ; compare with "XMAS"
     je .count
-    cmp edx, [rbp - 8]
+    cmp edx, [rbp - 8]          ; compare with "SAMX"
     je .count
     jmp .no_count
 
 .count:
-    inc eax
+    inc eax                     ; increment xmas counter
 
 .no_count:
     inc ecx
@@ -274,35 +274,35 @@ is_x_mas:
 
     mov edx, "A"
     shl edx, 8
-    mov ecx, edx
+    mov ecx, edx                ; initialize edx and ecx with "\0A\0"
 
     xor esi, esi
     mov sil, [rdi - 141]
-    or edx, esi
+    or edx, esi                 ; add up left char
     mov sil, [rdi + 141]
     shl esi, 16
-    or edx, esi
+    or edx, esi                 ; add down right char
 
-    cmp edx, [rbp - 4]
+    cmp edx, [rbp - 4]          ; verify patterns
     je .next1
     cmp edx, [rbp - 8]
     jne .end
 .next1:
-    mov al, 1
+    mov al, 1                   ; found one diagonal
 
     xor esi, esi
     mov sil, [rdi - 139]
-    or ecx, esi
+    or ecx, esi                 ; add up right char
     mov sil, [rdi + 139]
     shl esi, 16
-    or ecx, esi
+    or ecx, esi                 ; add down left char
 
-    cmp ecx, [rbp - 4]
+    cmp ecx, [rbp - 4]          ; verify patterns
     je .next2
     cmp ecx, [rbp - 8]
     jne .end
 .next2:
-    mov ah, 1
+    mov ah, 1                   ; found other diagonal
 
 .end:
     and al, ah
